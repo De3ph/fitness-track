@@ -1,103 +1,174 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import { AppShell } from "@/app/components/layout/app-shell"
+import { Button } from "@/app/components/ui/button"
+import { useStore } from "@/app/context/StoreProvider"
+import { Dumbbell, LineChart, ListChecks, Plus, Timer } from "lucide-react"
+import { observer } from "mobx-react-lite"
+import Link from "next/link"
+
+const HomePage = observer(() => {
+  const { workoutStore, templateStore } = useStore()
+  const activeWorkout = workoutStore.activeWorkout
+  const recentTemplates = templateStore.getFrequentTemplates(3)
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <AppShell>
+      <div className='space-y-6'>
+        <section>
+          <h1 className='text-2xl font-bold tracking-tight mb-4'>
+            Fitness Track
+          </h1>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+          {/* Active workout section */}
+          {activeWorkout ? (
+            <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <h2 className='font-semibold'>{activeWorkout.name}</h2>
+                  <p className='text-sm text-gray-500 dark:text-gray-400'>
+                    Started {formatTimeAgo(activeWorkout.startTime)}
+                  </p>
+                </div>
+                <Link href={`/workouts/${activeWorkout.id}`}>
+                  <Button size='sm'>Continue</Button>
+                </Link>
+              </div>
+
+              {/* Show rest timer if active */}
+              {workoutStore.restTimerActive && (
+                <div className='mt-4 bg-blue-50 dark:bg-blue-900/20 rounded p-3 flex items-center'>
+                  <Timer className='h-5 w-5 text-blue-600 dark:text-blue-400 mr-2' />
+                  <div className='flex-1'>
+                    <p className='text-sm font-medium text-blue-700 dark:text-blue-300'>
+                      Rest Timer: {workoutStore.restTimeRemaining}s
+                    </p>
+                  </div>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => workoutStore.stopRestTimer()}
+                  >
+                    Skip
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6 flex flex-col items-center justify-center text-center'>
+              <Dumbbell className='h-10 w-10 text-gray-400 mb-2' />
+              <h3 className='font-medium'>No Active Workout</h3>
+              <p className='text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4'>
+                Start a new workout to track your progress
+              </p>
+
+              <div className='flex gap-3'>
+                <Link href='/workouts/new'>
+                  <Button>Start Workout</Button>
+                </Link>
+                <Link href='/templates'>
+                  <Button variant='outline'>Use Template</Button>
+                </Link>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Quick actions */}
+        <section>
+          <h2 className='text-lg font-semibold mb-3'>Quick Actions</h2>
+          <div className='grid grid-cols-2 gap-3'>
+            <Link href='/workouts' className='w-full'>
+              <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 flex flex-col items-center text-center hover:border-primary'>
+                <Dumbbell className='h-8 w-8 text-primary mb-2' />
+                <span className='font-medium'>Workouts</span>
+                <span className='text-xs text-gray-500 dark:text-gray-400'>
+                  View history
+                </span>
+              </div>
+            </Link>
+            <Link href='/templates' className='w-full'>
+              <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 flex flex-col items-center text-center hover:border-primary'>
+                <ListChecks className='h-8 w-8 text-primary mb-2' />
+                <span className='font-medium'>Templates</span>
+                <span className='text-xs text-gray-500 dark:text-gray-400'>
+                  Create & manage
+                </span>
+              </div>
+            </Link>
+            <Link href='/movements' className='w-full'>
+              <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 flex flex-col items-center text-center hover:border-primary'>
+                <Plus className='h-8 w-8 text-primary mb-2' />
+                <span className='font-medium'>Movements</span>
+                <span className='text-xs text-gray-500 dark:text-gray-400'>
+                  Add exercises
+                </span>
+              </div>
+            </Link>
+            <Link href='/progress' className='w-full'>
+              <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 flex flex-col items-center text-center hover:border-primary'>
+                <LineChart className='h-8 w-8 text-primary mb-2' />
+                <span className='font-medium'>Progress</span>
+                <span className='text-xs text-gray-500 dark:text-gray-400'>
+                  Track results
+                </span>
+              </div>
+            </Link>
+          </div>
+        </section>
+
+        {/* Recent templates */}
+        {recentTemplates.length > 0 && (
+          <section>
+            <h2 className='text-lg font-semibold mb-3'>Recent Templates</h2>
+            <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700'>
+              {recentTemplates.map((template) => (
+                <div
+                  key={template.id}
+                  className='p-4 border-b border-gray-200 dark:border-gray-700 last:border-b-0'
+                >
+                  <div className='flex justify-between items-center'>
+                    <div>
+                      <h3 className='font-medium'>{template.name}</h3>
+                      <p className='text-sm text-gray-500 dark:text-gray-400'>
+                        {template.exercises.length} exercises
+                      </p>
+                    </div>
+                    <Button
+                      size='sm'
+                      onClick={() => {
+                        workoutStore.startWorkoutFromTemplate(template.id)
+                        templateStore.markTemplateAsUsed(template.id)
+                      }}
+                    >
+                      Start
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+    </AppShell>
+  )
+})
+
+function formatTimeAgo(date: Date): string {
+  const now = new Date()
+  const diffInMinutes = Math.floor(
+    (now.getTime() - date.getTime()) / (1000 * 60)
+  )
+
+  if (diffInMinutes < 1) return "just now"
+  if (diffInMinutes === 1) return "1 minute ago"
+  if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`
+
+  const diffInHours = Math.floor(diffInMinutes / 60)
+  if (diffInHours === 1) return "1 hour ago"
+  if (diffInHours < 24) return `${diffInHours} hours ago`
+
+  return date.toLocaleDateString()
 }
+
+export default HomePage
