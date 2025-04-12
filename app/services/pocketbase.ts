@@ -1,49 +1,64 @@
-import PocketBase from 'pocketbase';
+import PocketBase from "pocketbase"
 
-// Create a single PocketBase instance for the entire app
-const pb = new PocketBase(process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090');
+/**
+ * PocketBaseClient - Singleton implementation of PocketBase client
+ */
+class PocketBaseClient {
+  private static instance: PocketBaseClient
+  private client: PocketBase
 
-export async function createRecord(
-  collection: string,
-  data: Record<string, any>
-) {
-  try {
-    return await pb.collection(collection).create(data)
-  } catch (error) {
-    console.error(`Error creating record in ${collection}:`, error)
-    throw error
+  private constructor() {
+    this.client = new PocketBase(
+      process.env.NEXT_PUBLIC_POCKETBASE_URL || "http://127.0.0.1:8090"
+    )
+  }
+
+  /**
+   * Get the PocketBase singleton instance
+   */
+  public static getInstance(): PocketBaseClient {
+    if (!PocketBaseClient.instance) {
+      PocketBaseClient.instance = new PocketBaseClient()
+    }
+
+    return PocketBaseClient.instance
+  }
+
+  /**
+   * Get the PocketBase client
+   */
+  public getClient(): PocketBase {
+    return this.client
+  }
+
+  /**
+   * Check if user is authenticated
+   */
+  public isAuthenticated(): boolean {
+    return this.client.authStore.isValid
+  }
+
+  /**
+   * Get current authenticated user (if any)
+   */
+  public getUser() {
+    return this.client.authStore.model
   }
 }
 
-export async function getRecords(collection: string, filter: string = "") {
-  try {
-    return await pb.collection(collection).getFullList({ filter })
-  } catch (error) {
-    console.error(`Error fetching records from ${collection}:`, error)
-    throw error
-  }
-}
+// Export the singleton instance getter
+export const getPocketBase = () => PocketBaseClient.getInstance().getClient()
 
-export async function updateRecord(
-  collection: string,
-  id: string,
-  data: Record<string, any>
-) {
-  try {
-    return await pb.collection(collection).update(id, data)
-  } catch (error) {
-    console.error(`Error updating record in ${collection}:`, error)
-    throw error
-  }
-}
+// Export the singleton instance directly
+export const pocketbase = PocketBaseClient.getInstance()
 
-export async function deleteRecord(collection: string, id: string) {
-  try {
-    return await pb.collection(collection).delete(id)
-  } catch (error) {
-    console.error(`Error deleting record from ${collection}:`, error)
-    throw error
-  }
-}
+// Export the class for type purposes
+export { PocketBaseClient }
 
-export default pb;
+// Export the default client for backward compatibility
+export default PocketBaseClient.getInstance().getClient()
+
+/**
+ * Use a more relaxed type that allows primitive values
+ */
+export type RecordData = Record<string, unknown>

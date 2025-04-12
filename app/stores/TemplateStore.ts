@@ -1,10 +1,8 @@
 import { makeAutoObservable } from 'mobx';
 import {
-  createRecord,
-  deleteRecord,
-  getRecords,
-  updateRecord
-} from "../services/pocketbase"
+  templateRepository,
+  type TemplateRepository
+} from "../services/repositories"
 import { RootStore } from "./RootStore"
 
 export type TemplateExercise = {
@@ -28,20 +26,48 @@ export type WorkoutTemplate = {
 export class TemplateStore {
   templates: WorkoutTemplate[] = []
   rootStore: RootStore
+  templateRepository: TemplateRepository
 
   constructor(rootStore: RootStore) {
     this.rootStore = rootStore
+    this.templateRepository = templateRepository
     makeAutoObservable(this)
   }
 
   async loadTemplates() {
     try {
-      const records = await getRecords("templates")
-      this.templates = records.map((record) => ({
-        ...record,
+      // First get all templates
+      const templateRecords = await this.templateRepository.getAll()
+
+      // Create template objects with proper date conversion
+      const templates = templateRecords.map((record) => ({
+        id: record.id,
+        name: record.name,
+        description: record.description,
         created: new Date(record.created),
-        lastUsed: record.lastUsed ? new Date(record.lastUsed) : undefined
+        lastUsed: record.lastUsed ? new Date(record.lastUsed) : undefined,
+        exercises: [] as TemplateExercise[] // Explicitly type as TemplateExercise[]
       }))
+
+      // For each template, load its exercises using repository
+      for (const template of templates) {
+        const templateDetails =
+          await this.templateRepository.getTemplateWithExercises(template.id)
+
+        const typedExercises: TemplateExercise[] =
+          templateDetails.exercises.map((exercise) => ({
+            id: exercise.id,
+            movementId: exercise.movementId,
+            sets: exercise.sets,
+            repsPerSet: exercise.repsPerSet,
+            restTime: exercise.restTime,
+            notes: exercise.notes
+          }))
+
+        template.exercises = typedExercises
+      }
+
+      this.templates = templates
     } catch (error) {
       console.error("Failed to load templates:", error)
     }
@@ -49,10 +75,19 @@ export class TemplateStore {
 
   async saveTemplate(template: WorkoutTemplate) {
     try {
+      const templateData = {
+        name: template.name,
+        description: template.description,
+        created: template.created.toISOString(),
+        lastUsed: template.lastUsed
+          ? template.lastUsed.toISOString()
+          : undefined
+      }
+
       if (template.id) {
-        await updateRecord("templates", template.id, template)
+        await this.templateRepository.update(template.id, templateData)
       } else {
-        const newRecord = await createRecord("templates", template)
+        const newRecord = await this.templateRepository.create(templateData)
         template.id = newRecord.id
       }
     } catch (error) {
@@ -62,7 +97,7 @@ export class TemplateStore {
 
   async deleteTemplate(templateId: string) {
     try {
-      await deleteRecord("templates", templateId)
+      await this.templateRepository.delete(templateId)
       this.templates = this.templates.filter((t) => t.id !== templateId)
     } catch (error) {
       console.error("Failed to delete template:", error)
@@ -70,49 +105,87 @@ export class TemplateStore {
   }
 
   // Create a new workout template
-  createTemplate(name: string, description?: string): WorkoutTemplate {
+  async createTemplate(
+    name: string,
+    description?: string
+  ): Promise<WorkoutTemplate> {
     const newTemplate: WorkoutTemplate = {
-      id: crypto.randomUUID(),
+      id: "", // PocketBase will generate the ID
       name,
       description,
       exercises: [],
       created: new Date()
     }
 
-    this.templates.push(newTemplate)
-    this.saveTemplate(newTemplate)
-    return newTemplate
+    try {
+      const templateData = {
+        name: newTemplate.name,
+        description: newTemplate.description,
+        created: newTemplate.created.toISOString()
+      }
+
+      const createdRecord = await this.templateRepository.create(templateData)
+
+      const createdTemplate = {
+        ...newTemplate,
+        id: createdRecord.id
+      }
+
+      this.templates.push(createdTemplate)
+      return createdTemplate
+    } catch (error) {
+      console.error("Failed to create template:", error)
+      throw error
+    }
   }
 
   // Add an exercise to a template
-  addExerciseToTemplate(
+  async addExerciseToTemplate(
     templateId: string,
     movementId: string,
     sets: number = 3,
     repsPerSet: number = 8,
     restTime: number = 60
-  ): TemplateExercise | undefined {
+  ): Promise<TemplateExercise | undefined> {
     const template = this.templates.find((t) => t.id === templateId)
     if (!template) return
 
     const movement = this.rootStore.movementStore.getMovement(movementId)
     if (!movement) return
 
-    const newExercise: TemplateExercise = {
-      id: crypto.randomUUID(),
-      movementId,
-      sets,
-      repsPerSet,
-      restTime
-    }
+    try {
+      // Use repository to add exercise to template
+      const createdExercise =
+        await this.templateRepository.addExerciseToTemplate(
+          templateId,
+          movementId,
+          sets,
+          repsPerSet,
+          restTime,
+          "" // Empty notes
+        )
 
-    template.exercises.push(newExercise)
-    this.saveTemplate(template)
-    return newExercise
+      const newExercise: TemplateExercise = {
+        id: createdExercise.id,
+        movementId,
+        sets,
+        repsPerSet,
+        restTime
+      }
+
+      template.exercises.push(newExercise)
+      return newExercise
+    } catch (error) {
+      console.error("Failed to add exercise to template:", error)
+      return undefined
+    }
   }
 
   // Remove an exercise from a template
-  removeExerciseFromTemplate(templateId: string, exerciseId: string): boolean {
+  async removeExerciseFromTemplate(
+    templateId: string,
+    exerciseId: string
+  ): Promise<boolean> {
     const template = this.templates.find((t) => t.id === templateId)
     if (!template) return false
 
@@ -121,35 +194,57 @@ export class TemplateStore {
     )
     if (exerciseIndex === -1) return false
 
-    template.exercises.splice(exerciseIndex, 1)
-    this.saveTemplate(template)
-    return true
+    try {
+      // Use repository to delete exercise
+      await this.templateRepository.removeExerciseFromTemplate(exerciseId)
+
+      // Update local state
+      template.exercises.splice(exerciseIndex, 1)
+      return true
+    } catch (error) {
+      console.error("Failed to remove exercise from template:", error)
+      return false
+    }
   }
 
   // Update a template exercise
-  updateTemplateExercise(
+  async updateTemplateExercise(
     templateId: string,
     exerciseId: string,
     updates: Partial<TemplateExercise>
-  ): TemplateExercise | undefined {
+  ): Promise<TemplateExercise | undefined> {
     const template = this.templates.find((t) => t.id === templateId)
     if (!template) return
 
     const exercise = template.exercises.find((e) => e.id === exerciseId)
     if (!exercise) return
 
-    // Apply updates to the exercise
-    Object.assign(exercise, updates)
-    this.saveTemplate(template)
-    return exercise
+    try {
+      // Apply updates to the exercise locally
+      Object.assign(exercise, updates)
+
+      // Update in database using repository
+      await this.templateRepository.updateExercise(exerciseId, updates)
+      return exercise
+    } catch (error) {
+      console.error("Failed to update template exercise:", error)
+      return undefined
+    }
   }
 
   // Mark a template as used
-  markTemplateAsUsed(templateId: string): void {
+  async markTemplateAsUsed(templateId: string): Promise<void> {
     const template = this.templates.find((t) => t.id === templateId)
-    if (template) {
-      template.lastUsed = new Date()
-      this.saveTemplate(template)
+    if (!template) return
+
+    try {
+      const currentDate = new Date()
+      template.lastUsed = currentDate
+
+      // Use repository to mark template as used
+      await this.templateRepository.markTemplateAsUsed(templateId)
+    } catch (error) {
+      console.error("Failed to mark template as used:", error)
     }
   }
 

@@ -1,10 +1,9 @@
 import { makeAutoObservable } from 'mobx';
 import {
-  createRecord,
-  deleteRecord,
-  getRecords,
-  updateRecord
-} from "../services/pocketbase"
+  workoutRepository,
+  type WorkoutRepository
+} from "../services/repositories"
+import { WeightRecord } from "./MovementStore"
 import { RootStore } from "./RootStore"
 
 export type WorkoutSet = {
@@ -40,20 +39,57 @@ export class WorkoutStore {
   restTimeRemaining = 0
   restTimerInterval: NodeJS.Timeout | null = null
   rootStore: RootStore
+  workoutRepository: WorkoutRepository
 
   constructor(rootStore: RootStore) {
     this.rootStore = rootStore
+    this.workoutRepository = workoutRepository
     makeAutoObservable(this)
   }
 
   async loadWorkouts() {
     try {
-      const records = await getRecords("workouts")
-      this.workouts = records.map((record) => ({
-        ...record,
+      // First get all workouts
+      const workoutRecords = await this.workoutRepository.getAll()
+
+      // Create workout objects with proper date conversion
+      const workouts = workoutRecords.map((record) => ({
+        id: record.id,
+        name: record.name,
+        completed: record.completed,
+        notes: record.notes,
         startTime: new Date(record.startTime),
-        endTime: record.endTime ? new Date(record.endTime) : undefined
+        endTime: record.endTime ? new Date(record.endTime) : undefined,
+        exercises: [] as WorkoutExercise[] // Explicitly type as WorkoutExercise[]
       }))
+
+      // For each workout, load its exercises and sets using the repository pattern
+      for (const workout of workouts) {
+        const workoutDetails =
+          await this.workoutRepository.getWorkoutWithDetails(workout.id)
+
+        workout.exercises = workoutDetails.exercises.map((exercise) => ({
+          id: exercise.id,
+          movementId: exercise.movementId,
+          notes: exercise.notes,
+          sets: exercise.sets.map((set) => ({
+            id: set.id,
+            movementId: set.movementId,
+            weight: set.weight,
+            reps: set.reps,
+            completed: set.completed,
+            restTime: set.restTime
+          }))
+        }))
+      }
+
+      this.workouts = workouts
+
+      // Set active workout if there's an incomplete one
+      const incompleteWorkout = this.workouts.find((w) => !w.completed)
+      if (incompleteWorkout) {
+        this.activeWorkout = incompleteWorkout
+      }
     } catch (error) {
       console.error("Failed to load workouts:", error)
     }
@@ -61,10 +97,18 @@ export class WorkoutStore {
 
   async saveWorkout(workout: Workout) {
     try {
+      const workoutData = {
+        name: workout.name,
+        completed: workout.completed,
+        notes: workout.notes,
+        startTime: workout.startTime.toISOString(),
+        endTime: workout.endTime ? workout.endTime.toISOString() : undefined
+      }
+
       if (workout.id) {
-        await updateRecord("workouts", workout.id, workout)
+        await this.workoutRepository.update(workout.id, workoutData)
       } else {
-        const newRecord = await createRecord("workouts", workout)
+        const newRecord = await this.workoutRepository.create(workoutData)
         workout.id = newRecord.id
       }
     } catch (error) {
@@ -74,7 +118,7 @@ export class WorkoutStore {
 
   async deleteWorkout(workoutId: string) {
     try {
-      await deleteRecord("workouts", workoutId)
+      await this.workoutRepository.delete(workoutId)
       this.workouts = this.workouts.filter((w) => w.id !== workoutId)
     } catch (error) {
       console.error("Failed to delete workout:", error)
@@ -82,54 +126,84 @@ export class WorkoutStore {
   }
 
   // Start a new workout session
-  startWorkout = (
+  startWorkout = async (
     name: string = `Workout ${new Date().toLocaleDateString()}`
-  ): Workout => {
+  ): Promise<Workout> => {
     // Complete any active workout first
     if (this.activeWorkout && !this.activeWorkout.completed) {
-      this.completeWorkout(this.activeWorkout.id)
+      await this.completeWorkout(this.activeWorkout.id)
     }
 
     const newWorkout: Workout = {
-      id: crypto.randomUUID(),
+      id: "", // PocketBase will generate the ID
       name,
       exercises: [],
       startTime: new Date(),
       completed: false
     }
 
-    this.workouts.push(newWorkout)
-    this.activeWorkout = newWorkout
-    this.saveWorkout(newWorkout)
-    return newWorkout
+    try {
+      const workoutData = {
+        name: newWorkout.name,
+        completed: newWorkout.completed,
+        startTime: newWorkout.startTime.toISOString()
+      }
+
+      const createdRecord = await this.workoutRepository.create(workoutData)
+
+      const createdWorkout = {
+        ...newWorkout,
+        id: createdRecord.id
+      }
+
+      this.workouts.push(createdWorkout)
+      this.activeWorkout = createdWorkout
+      return createdWorkout
+    } catch (error) {
+      console.error("Failed to start workout:", error)
+      throw error
+    }
   }
 
   // Start workout from template
-  startWorkoutFromTemplate = (templateId: string): Workout | null => {
+  startWorkoutFromTemplate = async (
+    templateId: string
+  ): Promise<Workout | null> => {
     const template = this.rootStore.templateStore.getTemplate(templateId)
     if (!template) return null
 
-    const newWorkout = this.startWorkout(template.name)
+    try {
+      const newWorkout = await this.startWorkout(template.name)
 
-    // Clone exercises from template
-    template.exercises.forEach((exercise) => {
-      const movement = this.rootStore.movementStore.getMovement(
-        exercise.movementId
-      )
-      if (movement) {
-        this.addExerciseToWorkout(
-          newWorkout.id,
-          exercise.movementId,
-          exercise.sets
+      // Clone exercises from template
+      const exercisePromises = template.exercises.map(async (exercise) => {
+        const movement = this.rootStore.movementStore.getMovement(
+          exercise.movementId
         )
-      }
-    })
+        if (movement) {
+          return this.addExerciseToWorkout(
+            newWorkout.id,
+            exercise.movementId,
+            exercise.sets
+          )
+        }
+        return null
+      })
 
-    return newWorkout
+      await Promise.all(exercisePromises)
+
+      // Mark the template as used
+      await this.rootStore.templateStore.markTemplateAsUsed(templateId)
+
+      return newWorkout
+    } catch (error) {
+      console.error("Failed to start workout from template:", error)
+      return null
+    }
   }
 
   // Complete a workout session
-  completeWorkout = (workoutId: string): Workout | undefined => {
+  completeWorkout = async (workoutId: string): Promise<Workout | undefined> => {
     const workout = this.workouts.find((w) => w.id === workoutId)
     if (!workout) return
 
@@ -141,67 +215,103 @@ export class WorkoutStore {
       this.activeWorkout = null
     }
 
-    // Record all completed sets' weights in the movement store
-    workout.exercises.forEach((exercise) => {
-      const completedSets = exercise.sets.filter((set) => set.completed)
-      if (completedSets.length > 0) {
-        // For each completed movement, add a weight record
-        completedSets.forEach((set) => {
-          this.rootStore.movementStore.addWeightRecord(
-            exercise.movementId,
-            set.weight,
-            set.reps,
-            1, // One set
-            workout.id
-          )
-        })
-      }
-    })
+    try {
+      // Update workout in database using repository
+      await this.workoutRepository.completeWorkout(workoutId)
 
-    this.saveWorkout(workout)
-    return workout
+      // Record all completed sets' weights in the movement store
+      const recordPromises: Promise<WeightRecord | undefined>[] = []
+
+      workout.exercises.forEach((exercise) => {
+        const completedSets = exercise.sets.filter((set) => set.completed)
+        if (completedSets.length > 0) {
+          // For each completed movement, add a weight record
+          completedSets.forEach((set) => {
+            recordPromises.push(
+              this.rootStore.movementStore.addWeightRecord(
+                exercise.movementId,
+                set.weight,
+                set.reps,
+                1, // One set
+                workout.id
+              )
+            )
+          })
+        }
+      })
+
+      await Promise.all(recordPromises)
+      return workout
+    } catch (error) {
+      console.error("Failed to complete workout:", error)
+      return undefined
+    }
   }
 
   // Add an exercise to a workout
-  addExerciseToWorkout = (
+  addExerciseToWorkout = async (
     workoutId: string,
     movementId: string,
     defaultSets: number = 3
-  ): WorkoutExercise | undefined => {
+  ): Promise<WorkoutExercise | undefined> => {
     const workout = this.workouts.find((w) => w.id === workoutId)
     if (!workout) return
 
     const movement = this.rootStore.movementStore.getMovement(movementId)
     if (!movement) return
 
-    // Create sets with default values
-    const sets: WorkoutSet[] = Array(defaultSets)
-      .fill(null)
-      .map(() => ({
-        id: crypto.randomUUID(),
+    try {
+      // Create exercise in database using repository
+      const createdExercise = await this.workoutRepository.addExerciseToWorkout(
+        workoutId,
         movementId,
-        weight: 0,
-        reps: 8,
-        completed: false,
-        restTime: 60 // Default 60 seconds rest
-      }))
+        "" // Empty notes
+      )
 
-    const newExercise: WorkoutExercise = {
-      id: crypto.randomUUID(),
-      movementId,
-      sets
+      const newExercise: WorkoutExercise = {
+        id: createdExercise.id,
+        movementId,
+        sets: []
+      }
+
+      // Then create all the sets using repository
+      const setsPromises = Array(defaultSets)
+        .fill(null)
+        .map(async () => {
+          const createdSet = await this.workoutRepository.addSetToExercise(
+            newExercise.id,
+            movementId,
+            0, // Default weight
+            8, // Default reps
+            60 // Default rest time
+          )
+
+          return {
+            id: createdSet.id,
+            movementId,
+            weight: createdSet.weight,
+            reps: createdSet.reps,
+            completed: createdSet.completed,
+            restTime: createdSet.restTime
+          }
+        })
+
+      const sets = await Promise.all(setsPromises)
+      newExercise.sets = sets
+
+      workout.exercises.push(newExercise)
+      return newExercise
+    } catch (error) {
+      console.error("Failed to add exercise to workout:", error)
+      return undefined
     }
-
-    workout.exercises.push(newExercise)
-    this.saveWorkout(workout)
-    return newExercise
   }
 
   // Remove an exercise from a workout
-  removeExerciseFromWorkout = (
+  removeExerciseFromWorkout = async (
     workoutId: string,
     exerciseId: string
-  ): boolean => {
+  ): Promise<boolean> => {
     const workout = this.workouts.find((w) => w.id === workoutId)
     if (!workout) return false
 
@@ -210,17 +320,25 @@ export class WorkoutStore {
     )
     if (exerciseIndex === -1) return false
 
-    workout.exercises.splice(exerciseIndex, 1)
-    this.saveWorkout(workout)
-    return true
+    try {
+      // Delete exercise and its sets using repository
+      await this.workoutRepository.deleteExercise(exerciseId)
+
+      // Update local state
+      workout.exercises.splice(exerciseIndex, 1)
+      return true
+    } catch (error) {
+      console.error("Failed to remove exercise from workout:", error)
+      return false
+    }
   }
 
   // Complete a set in a workout exercise
-  completeSet = (
+  completeSet = async (
     workoutId: string,
     exerciseId: string,
     setId: string
-  ): void => {
+  ): Promise<void> => {
     const workout = this.workouts.find((w) => w.id === workoutId)
     if (!workout) return
 
@@ -231,7 +349,15 @@ export class WorkoutStore {
     if (!set) return
 
     set.completed = true
-    this.startRestTimer(set.restTime || 60)
+
+    try {
+      // Mark set as completed using repository
+      await this.workoutRepository.completeSet(setId)
+
+      this.startRestTimer(set.restTime || 60)
+    } catch (error) {
+      console.error("Failed to complete set:", error)
+    }
   }
 
   // Start the rest timer
@@ -260,12 +386,12 @@ export class WorkoutStore {
   }
 
   // Update set details
-  updateSet = (
+  updateSet = async (
     workoutId: string,
     exerciseId: string,
     setId: string,
     updates: Partial<WorkoutSet>
-  ): WorkoutSet | undefined => {
+  ): Promise<WorkoutSet | undefined> => {
     const workout = this.workouts.find((w) => w.id === workoutId)
     if (!workout) return
 
@@ -277,7 +403,15 @@ export class WorkoutStore {
 
     // Apply updates to the set
     Object.assign(set, updates)
-    return set
+
+    try {
+      // Update the set using repository
+      await this.workoutRepository.updateSet(setId, updates)
+      return set
+    } catch (error) {
+      console.error("Failed to update set:", error)
+      return undefined
+    }
   }
 
   // Get workout history

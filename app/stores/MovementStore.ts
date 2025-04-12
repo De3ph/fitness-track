@@ -1,10 +1,8 @@
 import { makeAutoObservable } from 'mobx';
 import {
-  createRecord,
-  deleteRecord,
-  getRecords,
-  updateRecord
-} from "../services/pocketbase"
+  movementRepository,
+  type MovementRepository
+} from "../services/repositories"
 import { RootStore } from "./RootStore"
 
 export type Movement = {
@@ -28,23 +26,48 @@ export type WeightRecord = {
 export class MovementStore {
   movements: Movement[] = []
   rootStore: RootStore
+  movementRepository: MovementRepository
 
   constructor(rootStore: RootStore) {
     this.rootStore = rootStore
+    this.movementRepository = movementRepository
     makeAutoObservable(this)
   }
 
   async loadMovements() {
     try {
-      const records = await getRecords("movements")
-      this.movements = records.map((record) => ({
-        ...record,
+      // First get all movements
+      const movementRecords = await this.movementRepository.getAll()
+
+      // Create movement objects with proper date conversion
+      const movements = movementRecords.map((record) => ({
+        id: record.id,
+        name: record.name,
+        description: record.description,
+        category: record.category,
         created: new Date(record.created),
-        records: record.records.map((r: any) => ({
-          ...r,
-          date: new Date(r.date)
-        }))
+        records: [] as WeightRecord[] // Explicitly type as WeightRecord[]
       }))
+
+      // For each movement, load its weight records
+      for (const movement of movements) {
+        const weightRecords = await this.movementRepository.getWeightRecords(
+          movement.id
+        )
+
+        const typedRecords: WeightRecord[] = weightRecords.map((record) => ({
+          id: record.id,
+          weight: record.weight,
+          date: new Date(record.date),
+          reps: record.reps,
+          sets: record.sets,
+          workoutId: record.workoutId
+        }))
+
+        movement.records = typedRecords
+      }
+
+      this.movements = movements
     } catch (error) {
       console.error("Failed to load movements:", error)
     }
@@ -52,10 +75,17 @@ export class MovementStore {
 
   async saveMovement(movement: Movement) {
     try {
+      const data = {
+        name: movement.name,
+        description: movement.description,
+        category: movement.category,
+        created: movement.created.toISOString()
+      }
+
       if (movement.id) {
-        await updateRecord("movements", movement.id, movement)
+        await this.movementRepository.update(movement.id, data)
       } else {
-        const newRecord = await createRecord("movements", movement)
+        const newRecord = await this.movementRepository.create(data)
         movement.id = newRecord.id
       }
     } catch (error) {
@@ -65,20 +95,20 @@ export class MovementStore {
 
   async deleteMovement(movementId: string) {
     try {
-      await deleteRecord("movements", movementId)
+      await this.movementRepository.delete(movementId)
       this.movements = this.movements.filter((m) => m.id !== movementId)
     } catch (error) {
       console.error("Failed to delete movement:", error)
     }
   }
 
-  createMovement(
+  async createMovement(
     name: string,
     description?: string,
     category?: string
-  ): Movement {
+  ): Promise<Movement> {
     const newMovement: Movement = {
-      id: crypto.randomUUID(),
+      id: "", // PocketBase will generate the ID
       name,
       description,
       category,
@@ -86,12 +116,28 @@ export class MovementStore {
       created: new Date()
     }
 
-    this.movements.push(newMovement)
-    this.saveMovement(newMovement)
-    return newMovement
+    try {
+      const data = {
+        name: newMovement.name,
+        description: newMovement.description,
+        category: newMovement.category,
+        created: newMovement.created.toISOString()
+      }
+
+      const createdRecord = await this.movementRepository.create(data)
+      const createdMovement = {
+        ...newMovement,
+        id: createdRecord.id
+      }
+      this.movements.push(createdMovement)
+      return createdMovement
+    } catch (error) {
+      console.error("Failed to create movement:", error)
+      throw error
+    }
   }
 
-  addWeightRecord(
+  async addWeightRecord(
     movementId: string,
     weight: number,
     reps: number,
@@ -102,7 +148,7 @@ export class MovementStore {
     if (!movement) return
 
     const record: WeightRecord = {
-      id: crypto.randomUUID(),
+      id: "", // PocketBase will generate the ID
       weight,
       date: new Date(),
       reps,
@@ -110,9 +156,28 @@ export class MovementStore {
       workoutId
     }
 
-    movement.records.push(record)
-    this.saveMovement(movement)
-    return record
+    try {
+      const createdRecord = await this.movementRepository.addWeightRecord(
+        movement.id,
+        record.weight,
+        record.reps,
+        record.sets,
+        record.date,
+        record.workoutId
+      )
+
+      // Add to local state with the generated ID
+      const newRecord = {
+        ...record,
+        id: createdRecord.id
+      }
+
+      movement.records.push(newRecord)
+      return newRecord
+    } catch (error) {
+      console.error("Failed to add weight record:", error)
+      throw error
+    }
   }
 
   getMovementHistory(movementId: string): WeightRecord[] {

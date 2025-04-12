@@ -1,75 +1,129 @@
-import PocketBase from "pocketbase"
+import { getPocketBase } from "./pocketbase"
+import {
+  movementRepository,
+  templateRepository,
+  workoutRepository
+} from "./repositories"
 
-const pb = new PocketBase(
-  process.env.NEXT_PUBLIC_POCKETBASE_URL || "http://127.0.0.1:8090"
-)
+/**
+ * Database service for fitness-track application
+ * Centralizes database operations and initialization
+ */
+export class Database {
+  private static instance: Database
 
-async function createCollections() {
-  const existingCollections = await pb.collections.getFullList()
-
-  // Check and create Users Collection
-  if (!existingCollections.some((col) => col.name === "users")) {
-    await pb.collections.create({
-      name: "users",
-      schema: [
-        { name: "email", type: "text" },
-        { name: "username", type: "text" },
-        { name: "created", type: "date" },
-        { name: "updated", type: "date" }
-      ]
-    })
+  private constructor() {
+    // Private constructor to enforce singleton pattern
   }
 
-  // Check and create Exercises Collection
-  if (!existingCollections.some((col) => col.name === "exercises")) {
-    await pb.collections.create({
-      name: "exercises",
-      schema: [
-        { name: "name", type: "text" },
-        { name: "description", type: "text" },
-        { name: "created", type: "date" },
-        { name: "updated", type: "date" }
-      ]
-    })
+  /**
+   * Get the Database singleton instance
+   */
+  public static getInstance(): Database {
+    if (!Database.instance) {
+      Database.instance = new Database()
+    }
+
+    return Database.instance
   }
 
-  // Check and create Workouts Collection
-  if (!existingCollections.some((col) => col.name === "workouts")) {
-    await pb.collections.create({
-      name: "workouts",
-      schema: [
-        { name: "name", type: "text" },
-        {
-          name: "exercises",
-          type: "array",
-          items: { type: "relation", relation: "exercises" }
-        },
-        { name: "created", type: "date" },
-        { name: "updated", type: "date" }
-      ]
-    })
+  /**
+   * Initialize PocketBase collections and data
+   */
+  public async initialize(): Promise<void> {
+    try {
+      // Sample initialization - in production you'd authenticate as admin
+      // and check if collections exist before creating them
+      console.log("Database initialized with PocketBase")
+    } catch (error) {
+      console.error("Failed to initialize database:", error)
+      throw error
+    }
   }
 
-  // Check and create Progress Collection
-  if (!existingCollections.some((col) => col.name === "progress")) {
-    await pb.collections.create({
-      name: "progress",
-      schema: [
-        { name: "userId", type: "relation", relation: "users" },
-        { name: "workoutId", type: "relation", relation: "workouts" },
-        { name: "date", type: "date" },
-        { name: "notes", type: "text" },
-        { name: "created", type: "date" },
-        { name: "updated", type: "date" }
-      ]
-    })
+  /**
+   * Ensure all collections are created in PocketBase
+   * Should be called with admin credentials
+   */
+  public async setupCollections(
+    adminEmail: string,
+    adminPassword: string
+  ): Promise<void> {
+    try {
+      const pb = getPocketBase()
+
+      // Authenticate as admin - needed to create collections
+      await pb.admins.authWithPassword(adminEmail, adminPassword)
+      console.log("Admin authenticated")
+
+      // Set up collections using the collection setup logic from setup-pocketbase
+      const { setupCollections } = await import("./setup-pocketbase")
+      await setupCollections()
+
+      console.log("All collections set up successfully")
+    } catch (error) {
+      console.error("Failed to set up collections:", error)
+      throw error
+    }
   }
 
-  console.log("Collections checked and created if necessary!")
+  /**
+   * Load initial seed data into PocketBase
+   */
+  public async seedData(): Promise<void> {
+    try {
+      // Check if data already exists
+      const movements = await movementRepository.getAll()
+
+      // If no movements, add some sample data
+      if (movements.length === 0) {
+        console.log("Seeding initial movement data...")
+
+        await movementRepository.create({
+          name: "Bench Press",
+          category: "Chest",
+          description: "Classic chest press exercise"
+        })
+
+        await movementRepository.create({
+          name: "Squat",
+          category: "Legs",
+          description: "Fundamental lower body exercise"
+        })
+
+        await movementRepository.create({
+          name: "Deadlift",
+          category: "Back",
+          description: "Compound exercise for posterior chain"
+        })
+
+        console.log("Initial movements seeded")
+      }
+    } catch (error) {
+      console.error("Failed to seed initial data:", error)
+    }
+  }
+
+  /**
+   * Check if PocketBase is accessible
+   */
+  public async healthCheck(): Promise<boolean> {
+    try {
+      const pb = getPocketBase()
+      const healthInfo = await pb.health.check()
+      return healthInfo.code === 200
+    } catch (error) {
+      console.error("PocketBase health check failed:", error)
+      return false
+    }
+  }
 }
 
-const initDb = async () => {
-  await createCollections()
-}
+// Export a singleton instance
+export const db = Database.getInstance()
 
-initDb()
+// Export repositories for direct access
+export { movementRepository, templateRepository, workoutRepository }
+
+// Export getRepository function
+export { getRepository } from "./repositories"
