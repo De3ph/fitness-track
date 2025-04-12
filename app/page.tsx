@@ -12,6 +12,15 @@ const HomePage = observer(() => {
   const activeWorkout = workoutStore.activeWorkout
   const recentTemplates = templateStore.getFrequentTemplates(3)
 
+  const handleStartWorkoutFromTemplate = (templateId: string) => {
+    workoutStore.startWorkoutFromTemplate(templateId)
+    templateStore.markTemplateAsUsed(templateId)
+  }
+
+  const handleStopRestTimer = () => {
+    workoutStore.stopRestTimer()
+  }
+
   return (
     <AppShell>
       <div className='space-y-6'>
@@ -47,7 +56,7 @@ const HomePage = observer(() => {
                   <Button
                     variant='outline'
                     size='sm'
-                    onClick={() => workoutStore.stopRestTimer()}
+                    onClick={handleStopRestTimer}
                   >
                     Skip
                   </Button>
@@ -136,10 +145,9 @@ const HomePage = observer(() => {
                     </div>
                     <Button
                       size='sm'
-                      onClick={() => {
-                        workoutStore.startWorkoutFromTemplate(template.id)
-                        templateStore.markTemplateAsUsed(template.id)
-                      }}
+                      onClick={() =>
+                        handleStartWorkoutFromTemplate(template.id)
+                      }
                     >
                       Start
                     </Button>
