@@ -1,9 +1,10 @@
 import { Button } from "@/app/components/ui/button"
 import { CardContent } from "@/app/components/ui/card"
+import type { WorkoutTemplate } from "@/app/stores/TemplateStore"
 import { Calendar, Link } from "lucide-react"
 
 interface WorkoutTemplateProps {
-  template: Template // Use the actual Template type if available
+  template: WorkoutTemplate
   onStartWorkout: (templateId: string) => void
 }
 

@@ -1,31 +1,37 @@
 import { makeAutoObservable } from 'mobx';
-import { RootStore } from './RootStore';
+import {
+  createRecord,
+  deleteRecord,
+  getRecords,
+  updateRecord
+} from "../services/pocketbase"
+import { RootStore } from "./RootStore"
 
 export type WorkoutSet = {
-  id: string;
-  movementId: string;
-  weight: number;
-  reps: number;
-  completed: boolean;
-  restTime?: number; // Rest time in seconds
-};
+  id: string
+  movementId: string
+  weight: number
+  reps: number
+  completed: boolean
+  restTime?: number // Rest time in seconds
+}
 
 export type WorkoutExercise = {
-  id: string;
-  movementId: string;
-  sets: WorkoutSet[];
-  notes?: string;
-};
+  id: string
+  movementId: string
+  sets: WorkoutSet[]
+  notes?: string
+}
 
 export type Workout = {
-  id: string;
-  name: string;
-  exercises: WorkoutExercise[];
-  startTime: Date;
-  endTime?: Date;
-  completed: boolean;
-  notes?: string;
-};
+  id: string
+  name: string
+  exercises: WorkoutExercise[]
+  startTime: Date
+  endTime?: Date
+  completed: boolean
+  notes?: string
+}
 
 export class WorkoutStore {
   workouts: Workout[] = []
@@ -38,6 +44,41 @@ export class WorkoutStore {
   constructor(rootStore: RootStore) {
     this.rootStore = rootStore
     makeAutoObservable(this)
+  }
+
+  async loadWorkouts() {
+    try {
+      const records = await getRecords("workouts")
+      this.workouts = records.map((record) => ({
+        ...record,
+        startTime: new Date(record.startTime),
+        endTime: record.endTime ? new Date(record.endTime) : undefined
+      }))
+    } catch (error) {
+      console.error("Failed to load workouts:", error)
+    }
+  }
+
+  async saveWorkout(workout: Workout) {
+    try {
+      if (workout.id) {
+        await updateRecord("workouts", workout.id, workout)
+      } else {
+        const newRecord = await createRecord("workouts", workout)
+        workout.id = newRecord.id
+      }
+    } catch (error) {
+      console.error("Failed to save workout:", error)
+    }
+  }
+
+  async deleteWorkout(workoutId: string) {
+    try {
+      await deleteRecord("workouts", workoutId)
+      this.workouts = this.workouts.filter((w) => w.id !== workoutId)
+    } catch (error) {
+      console.error("Failed to delete workout:", error)
+    }
   }
 
   // Start a new workout session
@@ -59,6 +100,7 @@ export class WorkoutStore {
 
     this.workouts.push(newWorkout)
     this.activeWorkout = newWorkout
+    this.saveWorkout(newWorkout)
     return newWorkout
   }
 
@@ -116,6 +158,7 @@ export class WorkoutStore {
       }
     })
 
+    this.saveWorkout(workout)
     return workout
   }
 
@@ -150,6 +193,7 @@ export class WorkoutStore {
     }
 
     workout.exercises.push(newExercise)
+    this.saveWorkout(workout)
     return newExercise
   }
 
@@ -167,6 +211,7 @@ export class WorkoutStore {
     if (exerciseIndex === -1) return false
 
     workout.exercises.splice(exerciseIndex, 1)
+    this.saveWorkout(workout)
     return true
   }
 

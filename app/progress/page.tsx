@@ -39,7 +39,12 @@ const ProgressPage = observer(() => {
   }))
 
   // Group days into weeks for the chart
-  const weeklyData = []
+  interface WeeklyWorkoutData {
+    week: string
+    count: number
+  }
+
+  const weeklyData: WeeklyWorkoutData[] = []
   for (let i = 0; i < activityData.length; i += 7) {
     const weekSlice = activityData.slice(i, i + 7)
     const totalWorkouts = weekSlice.reduce((sum, day) => sum + day.count, 0)
