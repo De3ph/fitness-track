@@ -12,5 +12,4 @@
 
 * use day.js to handle dates
 * change cursor type on buttons and links
-* extract components to seperate file
 * use React Server Components if there isn't any client interactions

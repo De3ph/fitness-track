@@ -3,33 +3,43 @@
 import { AppShell } from '@/app/components/layout/app-shell';
 import { Button } from '@/app/components/ui/button';
 import { useStore } from '@/app/context/StoreProvider';
-import { ChevronLeft, Plus, Save, Trash2, X } from 'lucide-react';
-import { observer } from 'mobx-react-lite';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card"
+import { FormLabel } from "@/components/ui/form"
+import { ChevronLeft, Plus, Save, Trash2, X } from "lucide-react"
+import { observer } from "mobx-react-lite"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 
 const NewTemplatePage = observer(() => {
-  const router = useRouter();
-  const { templateStore, movementStore } = useStore();
-  const [name, setName] = useState('New Template');
-  const [description, setDescription] = useState('');
-  const movements = movementStore.getAllMovements();
+  const router = useRouter()
+  const { templateStore, movementStore } = useStore()
+  const [name, setName] = useState("New Template")
+  const [description, setDescription] = useState("")
+  const movements = movementStore.getAllMovements()
 
   // Temporary template exercises during creation
-  const [exercises, setExercises] = useState<Array<{
-    id: string;
-    movementId: string;
-    sets: number;
-    repsPerSet: number;
-    restTime: number;
-  }>>([]);
+  const [exercises, setExercises] = useState<
+    Array<{
+      id: string
+      movementId: string
+      sets: number
+      repsPerSet: number
+      restTime: number
+    }>
+  >([])
 
-  const [showAddMovement, setShowAddMovement] = useState(false);
-  const [selectedMovementId, setSelectedMovementId] = useState('');
-  const [numSets, setNumSets] = useState(3);
-  const [repsPerSet, setRepsPerSet] = useState(8);
-  const [restTime, setRestTime] = useState(60);
+  const [showAddMovement, setShowAddMovement] = useState(false)
+  const [selectedMovementId, setSelectedMovementId] = useState("")
+  const [numSets, setNumSets] = useState(3)
+  const [repsPerSet, setRepsPerSet] = useState(8)
+  const [restTime, setRestTime] = useState(60)
 
   const handleAddExercise = () => {
     if (selectedMovementId) {
@@ -39,34 +49,34 @@ const NewTemplatePage = observer(() => {
         sets: numSets,
         repsPerSet,
         restTime
-      };
-      setExercises([...exercises, newExercise]);
-      setSelectedMovementId('');
-      setShowAddMovement(false);
+      }
+      setExercises([...exercises, newExercise])
+      setSelectedMovementId("")
+      setShowAddMovement(false)
     }
-  };
+  }
 
   const handleRemoveExercise = (id: string) => {
-    setExercises(exercises.filter(exercise => exercise.id !== id));
-  };
+    setExercises(exercises.filter((exercise) => exercise.id !== id))
+  }
 
   const handleSaveTemplate = () => {
     // Create the template
-    const template = templateStore.createTemplate(name, description);
+    const template = templateStore.createTemplate(name, description)
 
     // Add exercises to the template
-    exercises.forEach(exercise => {
+    exercises.forEach((exercise) => {
       templateStore.addExerciseToTemplate(
         template.id,
         exercise.movementId,
         exercise.sets,
         exercise.repsPerSet,
         exercise.restTime
-      );
-    });
+      )
+    })
 
-    router.push('/templates');
-  };
+    router.push("/templates")
+  }
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value)
@@ -128,15 +138,18 @@ const NewTemplatePage = observer(() => {
       <div className='space-y-6'>
         {/* Template Details */}
         <section>
-          <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4'>
-            <div className='space-y-4'>
+          <Card>
+            <CardHeader>
+              <CardTitle>Template Details</CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-4'>
               <div>
-                <label
+                <FormLabel
                   className='block text-sm font-medium mb-1'
                   htmlFor='template-name'
                 >
                   Template Name
-                </label>
+                </FormLabel>
                 <input
                   id='template-name'
                   type='text'
@@ -146,12 +159,12 @@ const NewTemplatePage = observer(() => {
                 />
               </div>
               <div>
-                <label
+                <FormLabel
                   className='block text-sm font-medium mb-1'
                   htmlFor='template-description'
                 >
                   Description (optional)
-                </label>
+                </FormLabel>
                 <textarea
                   id='template-description'
                   value={description}
@@ -160,16 +173,16 @@ const NewTemplatePage = observer(() => {
                   rows={3}
                 />
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </section>
 
         {/* Exercises List */}
         <section>
           <h2 className='text-lg font-semibold mb-3'>Exercises</h2>
-          <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700'>
+          <Card>
             {exercises.length === 0 ? (
-              <div className='p-6 text-center'>
+              <CardContent className='p-6 text-center'>
                 <p className='text-gray-500 dark:text-gray-400'>
                   No exercises added yet.
                 </p>
@@ -181,7 +194,7 @@ const NewTemplatePage = observer(() => {
                   <Plus className='h-4 w-4 mr-1' />
                   Add Exercise
                 </Button>
-              </div>
+              </CardContent>
             ) : (
               <>
                 {exercises.map((exercise) => {
@@ -213,7 +226,7 @@ const NewTemplatePage = observer(() => {
                     </div>
                   )
                 })}
-                <div className='p-4 border-t border-gray-200 dark:border-gray-700'>
+                <CardFooter className='p-4 border-t border-gray-200 dark:border-gray-700'>
                   <Button
                     variant='outline'
                     className='w-full'
@@ -222,37 +235,39 @@ const NewTemplatePage = observer(() => {
                     <Plus className='h-4 w-4 mr-1' />
                     Add Exercise
                   </Button>
-                </div>
+                </CardFooter>
               </>
             )}
-          </div>
+          </Card>
         </section>
 
         {/* Add Exercise Dialog */}
         {showAddMovement && (
           <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
-            <div className='bg-white dark:bg-gray-800 p-4 rounded-lg max-w-sm w-full mx-4'>
-              <div className='flex justify-between mb-4'>
-                <h2 className='text-xl font-bold'>Add Exercise</h2>
-                <button onClick={handleHideAddMovement}>
-                  <X className='h-5 w-5' />
-                </button>
-              </div>
+            <Card className='max-w-sm w-full mx-4'>
+              <CardHeader>
+                <div className='flex justify-between items-center'>
+                  <CardTitle>Add Exercise</CardTitle>
+                  <button onClick={handleHideAddMovement}>
+                    <X className='h-5 w-5' />
+                  </button>
+                </div>
+              </CardHeader>
 
               {movements.length === 0 ? (
-                <div className='text-center py-4'>
+                <CardContent className='text-center py-4'>
                   <p className='mb-3'>No exercises available.</p>
                   <Link href='/movements/new'>
                     <Button>Create Exercise</Button>
                   </Link>
-                </div>
+                </CardContent>
               ) : (
                 <>
-                  <div className='space-y-4'>
+                  <CardContent className='space-y-4'>
                     <div>
-                      <label className='block text-sm font-medium mb-1'>
+                      <FormLabel className='block text-sm font-medium mb-1'>
                         Exercise
-                      </label>
+                      </FormLabel>
                       <select
                         value={selectedMovementId}
                         onChange={handleSelectedMovementChange}
@@ -269,9 +284,9 @@ const NewTemplatePage = observer(() => {
 
                     <div className='grid grid-cols-2 gap-4'>
                       <div>
-                        <label className='block text-sm font-medium mb-1'>
+                        <FormLabel className='block text-sm font-medium mb-1'>
                           Sets
-                        </label>
+                        </FormLabel>
                         <input
                           type='number'
                           value={numSets}
@@ -281,9 +296,9 @@ const NewTemplatePage = observer(() => {
                         />
                       </div>
                       <div>
-                        <label className='block text-sm font-medium mb-1'>
+                        <FormLabel className='block text-sm font-medium mb-1'>
                           Reps per set
-                        </label>
+                        </FormLabel>
                         <input
                           type='number'
                           value={repsPerSet}
@@ -295,9 +310,9 @@ const NewTemplatePage = observer(() => {
                     </div>
 
                     <div>
-                      <label className='block text-sm font-medium mb-1'>
+                      <FormLabel className='block text-sm font-medium mb-1'>
                         Rest Time (seconds)
-                      </label>
+                      </FormLabel>
                       <input
                         type='number'
                         value={restTime}
@@ -307,32 +322,27 @@ const NewTemplatePage = observer(() => {
                         step='5'
                       />
                     </div>
-                  </div>
+                  </CardContent>
 
-                  <div className='flex space-x-2 mt-4'>
-                    <Button
-                      variant='outline'
-                      className='flex-1'
-                      onClick={handleHideAddMovement}
-                    >
+                  <CardFooter className='flex justify-end space-x-2'>
+                    <Button variant='outline' onClick={handleHideAddMovement}>
                       Cancel
                     </Button>
                     <Button
-                      className='flex-1'
                       onClick={handleAddExercise}
                       disabled={!selectedMovementId}
                     >
                       Add
                     </Button>
-                  </div>
+                  </CardFooter>
                 </>
               )}
-            </div>
+            </Card>
           </div>
         )}
       </div>
     </AppShell>
   )
-});
+})
 
 export default NewTemplatePage;
