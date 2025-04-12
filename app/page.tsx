@@ -94,7 +94,7 @@ const HomePage = observer(() => {
           <h2 className='text-lg font-semibold mb-3'>Quick Actions</h2>
           <div className='grid grid-cols-2 gap-3'>
             <Link href='/workouts' className='w-full'>
-              <Card className='h-full hover:border-primary transition-colors'>
+              <Card className='h-full hover:border-primary transition-colors cursor-pointer'>
                 <CardContent className='p-4 flex flex-col items-center text-center'>
                   <Dumbbell className='h-8 w-8 text-primary mb-2' />
                   <span className='font-medium'>Workouts</span>
@@ -105,7 +105,7 @@ const HomePage = observer(() => {
               </Card>
             </Link>
             <Link href='/templates' className='w-full'>
-              <Card className='h-full hover:border-primary transition-colors'>
+              <Card className='h-full hover:border-primary transition-colors cursor-pointer'>
                 <CardContent className='p-4 flex flex-col items-center text-center'>
                   <ListChecks className='h-8 w-8 text-primary mb-2' />
                   <span className='font-medium'>Templates</span>
@@ -116,7 +116,7 @@ const HomePage = observer(() => {
               </Card>
             </Link>
             <Link href='/movements' className='w-full'>
-              <Card className='h-full hover:border-primary transition-colors'>
+              <Card className='h-full hover:border-primary transition-colors cursor-pointer'>
                 <CardContent className='p-4 flex flex-col items-center text-center'>
                   <Plus className='h-8 w-8 text-primary mb-2' />
                   <span className='font-medium'>Movements</span>
@@ -127,7 +127,7 @@ const HomePage = observer(() => {
               </Card>
             </Link>
             <Link href='/progress' className='w-full'>
-              <Card className='h-full hover:border-primary transition-colors'>
+              <Card className='h-full hover:border-primary transition-colors cursor-pointer'>
                 <CardContent className='p-4 flex flex-col items-center text-center'>
                   <LineChart className='h-8 w-8 text-primary mb-2' />
                   <span className='font-medium'>Progress</span>

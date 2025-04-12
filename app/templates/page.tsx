@@ -1,13 +1,14 @@
-'use client';
+"use client"
 
-import { AppShell } from '@/app/components/layout/app-shell';
-import { Button } from '@/app/components/ui/button';
-import { useStore } from '@/app/context/StoreProvider';
+import { AppShell } from "@/app/components/layout/app-shell"
+import { Button } from "@/app/components/ui/button"
+import { useStore } from "@/app/context/StoreProvider"
 import { Card, CardContent } from "@/components/ui/card"
-import { Calendar, ListChecks, Plus } from "lucide-react"
+import { ListChecks, Plus } from "lucide-react"
 import { observer } from "mobx-react-lite"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import WorkoutTemplate from "../components/templates/WorkoutTemplate"
 
 const TemplatesPage = observer(() => {
   const router = useRouter()
@@ -57,41 +58,10 @@ const TemplatesPage = observer(() => {
                 key={template.id}
                 className='border-b border-gray-200 dark:border-gray-700 last:border-b-0'
               >
-                <CardContent className='p-4'>
-                  <div className='flex justify-between items-start'>
-                    <div>
-                      <h3 className='font-medium'>{template.name}</h3>
-                      <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>
-                        {template.exercises.length} exercises
-                      </p>
-                      {template.lastUsed && (
-                        <div className='flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1'>
-                          <Calendar className='h-3 w-3 mr-1' />
-                          Last used:{" "}
-                          {new Date(template.lastUsed).toLocaleDateString()}
-                        </div>
-                      )}
-                    </div>
-                    <div className='flex space-x-2'>
-                      <Button
-                        size='sm'
-                        variant='outline'
-                        onClick={() => handleStartWorkout(template.id)}
-                      >
-                        Start
-                      </Button>
-                      <Link href={`/templates/${template.id}`}>
-                        <Button size='sm'>Edit</Button>
-                      </Link>
-                    </div>
-                  </div>
-
-                  {template.description && (
-                    <p className='text-sm mt-2 text-gray-600 dark:text-gray-300'>
-                      {template.description}
-                    </p>
-                  )}
-                </CardContent>
+                <WorkoutTemplate
+                  template={template}
+                  onStartWorkout={handleStartWorkout}
+                />
               </div>
             ))}
           </Card>
@@ -101,4 +71,4 @@ const TemplatesPage = observer(() => {
   )
 })
 
-export default TemplatesPage;
+export default TemplatesPage
