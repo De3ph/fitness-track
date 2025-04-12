@@ -1,6 +1,6 @@
 import { Button } from '@/app/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { FormLabel } from '@/components/ui/form';
+import { Card, CardContent } from "@/app/components/ui/card"
+import { FormLabel } from "@/app/components/ui/form"
 import { Plus } from 'lucide-react';
 
 interface WorkoutNameInputProps {

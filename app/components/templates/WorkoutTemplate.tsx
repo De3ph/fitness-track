@@ -1,11 +1,11 @@
-import { CardContent } from "@/components/ui/card";
-import { Calendar, Link } from "lucide-react";
-import { Button } from "../components/ui/button";
+import { Button } from "@/app/components/ui/button"
+import { CardContent } from "@/app/components/ui/card"
+import { Calendar, Link } from "lucide-react"
 
 interface WorkoutTemplateProps {
-    template: Template; // Use the actual Template type if available
-    onStartWorkout: (templateId: string) => void;
-  }
+  template: Template // Use the actual Template type if available
+  onStartWorkout: (templateId: string) => void
+}
 
 const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   template,

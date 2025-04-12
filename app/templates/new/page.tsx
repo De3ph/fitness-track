@@ -1,16 +1,16 @@
 'use client';
 
 import { AppShell } from '@/app/components/layout/app-shell';
-import { Button } from '@/app/components/ui/button';
-import { useStore } from '@/app/context/StoreProvider';
+import { Button } from "@/app/components/ui/button"
 import {
   Card,
   CardContent,
   CardFooter,
   CardHeader,
   CardTitle
-} from "@/components/ui/card"
-import { FormLabel } from "@/components/ui/form"
+} from "@/app/components/ui/card"
+import { FormLabel } from "@/app/components/ui/form"
+import { useStore } from "@/app/context/StoreProvider"
 import { ChevronLeft, Plus, Save, Trash2, X } from "lucide-react"
 import { observer } from "mobx-react-lite"
 import Link from "next/link"

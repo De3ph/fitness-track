@@ -1,8 +1,8 @@
 'use client';
 
 import { AppShell } from '@/app/components/layout/app-shell';
-import { useStore } from '@/app/context/StoreProvider';
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/app/components/ui/card"
+import { useStore } from "@/app/context/StoreProvider"
 import { Calendar, ChevronRight, LineChart } from "lucide-react"
 import { observer } from "mobx-react-lite"
 import Link from "next/link"

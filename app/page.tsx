@@ -1,10 +1,10 @@
 "use client"
 
 import { AppShell } from "@/app/components/layout/app-shell"
+import { Alert, AlertDescription } from "@/app/components/ui/alert"
 import { Button } from "@/app/components/ui/button"
+import { Card, CardContent } from "@/app/components/ui/card"
 import { useStore } from "@/app/context/StoreProvider"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Card, CardContent } from "@/components/ui/card"
 import { Dumbbell, LineChart, ListChecks, Plus, Timer } from "lucide-react"
 import { observer } from "mobx-react-lite"
 import Link from "next/link"
