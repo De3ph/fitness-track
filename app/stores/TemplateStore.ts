@@ -34,7 +34,7 @@ export class TemplateStore {
     makeAutoObservable(this)
   }
 
-  async loadTemplates() {
+  loadTemplates = async () => {
     try {
       // First get all templates
       const templateRecords = await this.templateRepository.getAll()
@@ -73,7 +73,7 @@ export class TemplateStore {
     }
   }
 
-  async saveTemplate(template: WorkoutTemplate) {
+  saveTemplate = async (template: WorkoutTemplate) => {
     try {
       const templateData = {
         name: template.name,
@@ -95,7 +95,7 @@ export class TemplateStore {
     }
   }
 
-  async deleteTemplate(templateId: string) {
+  deleteTemplate = async (templateId: string) => {
     try {
       await this.templateRepository.delete(templateId)
       this.templates = this.templates.filter((t) => t.id !== templateId)
@@ -104,11 +104,10 @@ export class TemplateStore {
     }
   }
 
-  // Create a new workout template
-  async createTemplate(
+  createTemplate = async (
     name: string,
     description?: string
-  ): Promise<WorkoutTemplate> {
+  ): Promise<WorkoutTemplate> => {
     const newTemplate: WorkoutTemplate = {
       id: "", // PocketBase will generate the ID
       name,
@@ -125,7 +124,6 @@ export class TemplateStore {
       }
 
       const createdRecord = await this.templateRepository.create(templateData)
-
       const createdTemplate = {
         ...newTemplate,
         id: createdRecord.id
@@ -139,14 +137,13 @@ export class TemplateStore {
     }
   }
 
-  // Add an exercise to a template
-  async addExerciseToTemplate(
+  addExerciseToTemplate = async (
     templateId: string,
     movementId: string,
     sets: number = 3,
     repsPerSet: number = 8,
     restTime: number = 60
-  ): Promise<TemplateExercise | undefined> {
+  ): Promise<TemplateExercise | undefined> => {
     const template = this.templates.find((t) => t.id === templateId)
     if (!template) return
 
@@ -154,7 +151,6 @@ export class TemplateStore {
     if (!movement) return
 
     try {
-      // Use repository to add exercise to template
       const createdExercise =
         await this.templateRepository.addExerciseToTemplate(
           templateId,
@@ -181,11 +177,10 @@ export class TemplateStore {
     }
   }
 
-  // Remove an exercise from a template
-  async removeExerciseFromTemplate(
+  removeExerciseFromTemplate = async (
     templateId: string,
     exerciseId: string
-  ): Promise<boolean> {
+  ): Promise<boolean> => {
     const template = this.templates.find((t) => t.id === templateId)
     if (!template) return false
 
@@ -195,10 +190,7 @@ export class TemplateStore {
     if (exerciseIndex === -1) return false
 
     try {
-      // Use repository to delete exercise
       await this.templateRepository.removeExerciseFromTemplate(exerciseId)
-
-      // Update local state
       template.exercises.splice(exerciseIndex, 1)
       return true
     } catch (error) {
@@ -207,12 +199,11 @@ export class TemplateStore {
     }
   }
 
-  // Update a template exercise
-  async updateTemplateExercise(
+  updateTemplateExercise = async (
     templateId: string,
     exerciseId: string,
     updates: Partial<TemplateExercise>
-  ): Promise<TemplateExercise | undefined> {
+  ): Promise<TemplateExercise | undefined> => {
     const template = this.templates.find((t) => t.id === templateId)
     if (!template) return
 
@@ -220,10 +211,7 @@ export class TemplateStore {
     if (!exercise) return
 
     try {
-      // Apply updates to the exercise locally
       Object.assign(exercise, updates)
-
-      // Update in database using repository
       await this.templateRepository.updateExercise(exerciseId, updates)
       return exercise
     } catch (error) {
@@ -232,34 +220,28 @@ export class TemplateStore {
     }
   }
 
-  // Mark a template as used
-  async markTemplateAsUsed(templateId: string): Promise<void> {
+  markTemplateAsUsed = async (templateId: string): Promise<void> => {
     const template = this.templates.find((t) => t.id === templateId)
     if (!template) return
 
     try {
       const currentDate = new Date()
       template.lastUsed = currentDate
-
-      // Use repository to mark template as used
       await this.templateRepository.markTemplateAsUsed(templateId)
     } catch (error) {
       console.error("Failed to mark template as used:", error)
     }
   }
 
-  // Get a specific template
-  getTemplate(id: string): WorkoutTemplate | undefined {
+  getTemplate = (id: string): WorkoutTemplate | undefined => {
     return this.templates.find((t) => t.id === id)
   }
 
-  // Get all templates
-  getAllTemplates(): WorkoutTemplate[] {
+  getAllTemplates = (): WorkoutTemplate[] => {
     return [...this.templates]
   }
 
-  // Get frequently used templates
-  getFrequentTemplates(limit: number = 5): WorkoutTemplate[] {
+  getFrequentTemplates = (limit: number = 5): WorkoutTemplate[] => {
     return [...this.templates]
       .filter((t) => t.lastUsed)
       .sort(

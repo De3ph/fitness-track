@@ -6,6 +6,13 @@ import { useStore } from "@/app/context/StoreProvider"
 import { Calendar, ChevronRight, LineChart } from "lucide-react"
 import { observer } from "mobx-react-lite"
 import Link from "next/link"
+import {
+  countByDate,
+  formatIsoDate,
+  getLastNDays,
+  groupIntoWeeklyData,
+  isSameMonth
+} from "../utils/dateUtils"
 
 const ProgressPage = observer(() => {
   const { movementStore, workoutStore } = useStore()
@@ -18,19 +25,10 @@ const ProgressPage = observer(() => {
   )
 
   // Get workout frequency data for the chart
-  const last30Days = Array.from({ length: 30 }, (_, i) => {
-    const date = new Date()
-    date.setDate(date.getDate() - i)
-    return date.toISOString().split("T")[0]
-  }).reverse()
+  const last30Days = getLastNDays(30)
 
-  const workoutsByDate = workoutHistory.reduce(
-    (acc: Record<string, number>, workout) => {
-      const date = new Date(workout.startTime).toISOString().split("T")[0]
-      acc[date] = (acc[date] || 0) + 1
-      return acc
-    },
-    {}
+  const workoutsByDate = countByDate(workoutHistory, (w) =>
+    formatIsoDate(w.startTime)
   )
 
   const activityData = last30Days.map((date) => ({
@@ -39,30 +37,7 @@ const ProgressPage = observer(() => {
   }))
 
   // Group days into weeks for the chart
-  interface WeeklyWorkoutData {
-    week: string
-    count: number
-  }
-
-  const weeklyData: WeeklyWorkoutData[] = []
-  for (let i = 0; i < activityData.length; i += 7) {
-    const weekSlice = activityData.slice(i, i + 7)
-    const totalWorkouts = weekSlice.reduce((sum, day) => sum + day.count, 0)
-    if (weekSlice.length > 0) {
-      const startDate = new Date(weekSlice[0].date)
-      const endDate =
-        i + 7 < activityData.length
-          ? new Date(activityData[i + 6].date)
-          : new Date(weekSlice[weekSlice.length - 1].date)
-
-      weeklyData.push({
-        week: `${startDate.getMonth() + 1}/${startDate.getDate()} - ${
-          endDate.getMonth() + 1
-        }/${endDate.getDate()}`,
-        count: totalWorkouts
-      })
-    }
-  }
+  const weeklyData = groupIntoWeeklyData(activityData)
 
   return (
     <AppShell
@@ -93,14 +68,8 @@ const ProgressPage = observer(() => {
                   </div>
                   <div className='text-2xl font-bold'>
                     {
-                      workoutHistory.filter((workout) => {
-                        const workoutDate = new Date(workout.startTime)
-                        const now = new Date()
-                        return (
-                          workoutDate.getMonth() === now.getMonth() &&
-                          workoutDate.getFullYear() === now.getFullYear()
-                        )
-                      }).length
+                      workoutHistory.filter((w) => isSameMonth(w.startTime))
+                        .length
                     }
                   </div>
                 </div>
@@ -207,21 +176,18 @@ const ProgressPage = observer(() => {
                       )
                     : null
 
-                // Find earliest record with at least 30 days difference to latest
                 const oldestRecord =
                   records.length > 1
                     ? records.reduce((oldest, record) => {
-                        const recordDate = new Date(record.date)
-                        const latestDate = new Date(latestRecord!.date)
                         const daysDiff =
-                          (latestDate.getTime() - recordDate.getTime()) /
+                          (new Date(latestRecord!.date).getTime() -
+                            new Date(record.date).getTime()) /
                           (1000 * 3600 * 24)
-
-                        return daysDiff > 7 &&
-                          daysDiff >
-                            (latestDate.getTime() -
-                              new Date(oldest.date).getTime()) /
-                              (1000 * 3600 * 24)
+                        const oldestDiff =
+                          (new Date(latestRecord!.date).getTime() -
+                            new Date(oldest.date).getTime()) /
+                          (1000 * 3600 * 24)
+                        return daysDiff > 7 && daysDiff > oldestDiff
                           ? record
                           : oldest
                       }, records[0])

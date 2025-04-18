@@ -7,18 +7,24 @@ export class RootStore {
   workoutStore: WorkoutStore
   templateStore: TemplateStore
   movementStore: MovementStore
+  initialized: boolean = false
 
   constructor() {
     this.workoutStore = new WorkoutStore(this)
     this.templateStore = new TemplateStore(this)
     this.movementStore = new MovementStore(this)
+    this.initializeStores() // Initialize stores immediately
 
     makeAutoObservable(this)
   }
 
   // Initialize all data from PocketBase
-  async initializeStores() {
+  private initializeStores = async () => {
     try {
+      // Initialize the database first (ensures collections exist)
+      const { db } = await import("../services/db")
+      await db.initialize()
+
       // Load movements first since other stores depend on them
       await this.movementStore.loadMovements()
 
@@ -28,9 +34,12 @@ export class RootStore {
         this.workoutStore.loadWorkouts()
       ])
 
+      this.initialized = true
+      return true
       console.log("All stores initialized with PocketBase data")
     } catch (error) {
       console.error("Failed to initialize stores from PocketBase:", error)
+      return false
     }
   }
 }

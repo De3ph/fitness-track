@@ -34,7 +34,7 @@ export class MovementStore {
     makeAutoObservable(this)
   }
 
-  async loadMovements() {
+  loadMovements = async () => {
     try {
       // First get all movements
       const movementRecords = await this.movementRepository.getAll()
@@ -73,7 +73,7 @@ export class MovementStore {
     }
   }
 
-  async saveMovement(movement: Movement) {
+  saveMovement = async (movement: Movement) => {
     try {
       const data = {
         name: movement.name,
@@ -93,7 +93,7 @@ export class MovementStore {
     }
   }
 
-  async deleteMovement(movementId: string) {
+  deleteMovement = async (movementId: string) => {
     try {
       await this.movementRepository.delete(movementId)
       this.movements = this.movements.filter((m) => m.id !== movementId)
@@ -102,11 +102,11 @@ export class MovementStore {
     }
   }
 
-  async createMovement(
+  createMovement = async (
     name: string,
     description?: string,
     category?: string
-  ): Promise<Movement> {
+  ): Promise<Movement> => {
     const newMovement: Movement = {
       id: "", // PocketBase will generate the ID
       name,
@@ -137,13 +137,13 @@ export class MovementStore {
     }
   }
 
-  async addWeightRecord(
+  addWeightRecord = async (
     movementId: string,
     weight: number,
     reps: number,
     sets: number,
     workoutId?: string
-  ) {
+  ) => {
     const movement = this.movements.find((m) => m.id === movementId)
     if (!movement) return
 
@@ -180,7 +180,7 @@ export class MovementStore {
     }
   }
 
-  getMovementHistory(movementId: string): WeightRecord[] {
+  getMovementHistory = (movementId: string): WeightRecord[] => {
     const movement = this.movements.find((m) => m.id === movementId)
     if (!movement) return []
 
@@ -189,11 +189,11 @@ export class MovementStore {
     )
   }
 
-  getMovement(id: string): Movement | undefined {
+  getMovement = (id: string): Movement | undefined => {
     return this.movements.find((m) => m.id === id)
   }
 
-  getAllMovements(): Movement[] {
+  getAllMovements = (): Movement[] => {
     return this.movements
   }
 }

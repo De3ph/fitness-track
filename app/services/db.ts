@@ -1,4 +1,4 @@
-import { getPocketBase } from "./pocketbase"
+import { getPocketBase, PocketBaseClient } from "./pocketbase"
 import {
   movementRepository,
   templateRepository,
@@ -32,9 +32,20 @@ export class Database {
    */
   public async initialize(): Promise<void> {
     try {
-      // Sample initialization - in production you'd authenticate as admin
-      // and check if collections exist before creating them
-      console.log("Database initialized with PocketBase")
+      // First check if PocketBase is accessible
+      const isHealthy = await this.healthCheck()
+      if (!isHealthy) {
+        console.error("PocketBase server is not accessible")
+        throw new Error("PocketBase server is not accessible")
+      }
+
+      // Setup collections (will only create if they don't exist)
+      await this.setupCollections()
+
+      // Seed initial data if needed
+      await this.seedData()
+
+      console.log("Database initialized successfully")
     } catch (error) {
       console.error("Failed to initialize database:", error)
       throw error
@@ -45,25 +56,23 @@ export class Database {
    * Ensure all collections are created in PocketBase
    * Should be called with admin credentials
    */
-  public async setupCollections(
-    adminEmail: string,
-    adminPassword: string
-  ): Promise<void> {
+  public async setupCollections(): Promise<void> {
     try {
+      const { setupCollections } = await import("./setup-pocketbase")
       const pb = getPocketBase()
 
       // Authenticate as admin - needed to create collections
-      await pb.admins.authWithPassword(adminEmail, adminPassword)
-      console.log("Admin authenticated")
+      const isAuthenticated = await PocketBaseClient.initAdminAuth(pb)
+
+      if (!isAuthenticated) {
+        console.error("Admin authentication failed, cannot set up collections")
+        return
+      }
 
       // Set up collections using the collection setup logic from setup-pocketbase
-      const { setupCollections } = await import("./setup-pocketbase")
       await setupCollections()
-
-      console.log("All collections set up successfully")
     } catch (error) {
       console.error("Failed to set up collections:", error)
-      throw error
     }
   }
 

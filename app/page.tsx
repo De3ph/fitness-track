@@ -8,6 +8,7 @@ import { useStore } from "@/app/context/StoreProvider"
 import { Dumbbell, LineChart, ListChecks, Plus, Timer } from "lucide-react"
 import { observer } from "mobx-react-lite"
 import Link from "next/link"
+import { formatTimeAgo } from "./utils/dateUtils"
 
 const HomePage = observer(() => {
   const { workoutStore, templateStore } = useStore()
@@ -175,22 +176,5 @@ const HomePage = observer(() => {
     </AppShell>
   )
 })
-
-function formatTimeAgo(date: Date): string {
-  const now = new Date()
-  const diffInMinutes = Math.floor(
-    (now.getTime() - date.getTime()) / (1000 * 60)
-  )
-
-  if (diffInMinutes < 1) return "just now"
-  if (diffInMinutes === 1) return "1 minute ago"
-  if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`
-
-  const diffInHours = Math.floor(diffInMinutes / 60)
-  if (diffInHours === 1) return "1 hour ago"
-  if (diffInHours < 24) return `${diffInHours} hours ago`
-
-  return date.toLocaleDateString()
-}
 
 export default HomePage

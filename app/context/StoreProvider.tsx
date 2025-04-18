@@ -1,7 +1,7 @@
 // StoreProvider.tsx
 'use client';
 
-import React, { createContext, useContext, useEffect } from "react"
+import React, { createContext, useContext } from "react"
 import { rootStore, RootStore } from "../stores/RootStore"
 
 // Create a context for our store
@@ -9,14 +9,6 @@ export const StoreContext = createContext<RootStore | null>(null)
 
 // Create a provider component
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  // Initialize stores when the app starts
-  useEffect(() => {
-    // Load all data from PocketBase
-    rootStore
-      .initializeStores()
-      .catch((error) => console.error("Failed to initialize stores:", error))
-  }, [])
-
   return (
     <StoreContext.Provider value={rootStore}>{children}</StoreContext.Provider>
   )

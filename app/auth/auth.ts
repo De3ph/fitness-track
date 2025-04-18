@@ -22,9 +22,12 @@ export const register = async (
 
 export const login = async (email: string, password: string) => {
   try {
+    // Use the non-deprecated form of authWithPassword
     const authData = await pb
       .collection("users")
       .authWithPassword(email, password)
+
+    console.log("Authentication successful")
     return authData
   } catch (error) {
     console.error("Login error:", error)
@@ -42,4 +45,25 @@ export const getCurrentUser = () => {
 
 export const isAuthenticated = () => {
   return pb.authStore.isValid
+}
+
+/**
+ * Check authentication status and debug info
+ */
+export const checkAuthStatus = () => {
+  const status = {
+    isValid: pb.authStore.isValid,
+    token: pb.authStore.token ? "Present" : "Missing",
+    user: pb.authStore.model
+      ? {
+          id: pb.authStore.model.id,
+          email: pb.authStore.model.email,
+          collection:
+            pb.authStore.model.collectionName || pb.authStore.model.collectionId
+        }
+      : null
+  }
+
+  console.log("Auth status:", status)
+  return status
 }

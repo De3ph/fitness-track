@@ -1,4 +1,5 @@
-import { makeAutoObservable } from 'mobx';
+import dayjs from "dayjs"
+import { makeAutoObservable } from "mobx"
 import {
   workoutRepository,
   type WorkoutRepository
@@ -47,7 +48,7 @@ export class WorkoutStore {
     makeAutoObservable(this)
   }
 
-  async loadWorkouts() {
+  loadWorkouts = async () => {
     try {
       // First get all workouts
       const workoutRecords = await this.workoutRepository.getAll()
@@ -58,8 +59,8 @@ export class WorkoutStore {
         name: record.name,
         completed: record.completed,
         notes: record.notes,
-        startTime: new Date(record.startTime),
-        endTime: record.endTime ? new Date(record.endTime) : undefined,
+        startTime: dayjs(record.startTime).toDate(),
+        endTime: record.endTime ? dayjs(record.endTime).toDate() : undefined,
         exercises: [] as WorkoutExercise[] // Explicitly type as WorkoutExercise[]
       }))
 
@@ -95,7 +96,7 @@ export class WorkoutStore {
     }
   }
 
-  async saveWorkout(workout: Workout) {
+  saveWorkout = async (workout: Workout) => {
     try {
       const workoutData = {
         name: workout.name,
@@ -116,7 +117,7 @@ export class WorkoutStore {
     }
   }
 
-  async deleteWorkout(workoutId: string) {
+  deleteWorkout = async (workoutId: string) => {
     try {
       await this.workoutRepository.delete(workoutId)
       this.workouts = this.workouts.filter((w) => w.id !== workoutId)
@@ -202,7 +203,6 @@ export class WorkoutStore {
     }
   }
 
-  // Complete a workout session
   completeWorkout = async (workoutId: string): Promise<Workout | undefined> => {
     const workout = this.workouts.find((w) => w.id === workoutId)
     if (!workout) return

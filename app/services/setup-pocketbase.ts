@@ -1,360 +1,387 @@
 /**
  * PocketBase Collection Setup Script
- * 
+ *
  * This script creates all the necessary collections for the fitness tracking app.
  * Run it once to initialize your PocketBase database structure.
  */
 
-import PocketBase from 'pocketbase';
+import { getPocketBase, PocketBaseClient } from "./pocketbase"
 
-// Initialize PocketBase
-const pb = new PocketBase(process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090');
+const pb = getPocketBase()
+
+// Check if a collection exists
+async function collectionExists(name: string): Promise<boolean> {
+  try {
+    await pb.collections.getOne(name)
+    return true
+  } catch (error) {
+    console.log("🚀 ~ collectionExists ~ error:", error)
+    return false
+  }
+}
 
 // Admin login is required for creating collections
 async function setupCollections() {
   try {
     // You need to provide your admin email/password to create collections
     // Remember to update these values with your actual admin credentials
-    await pb.admins.authWithPassword('your-admin-email@example.com', 'your-admin-password');
-    
-    console.log('Admin authenticated. Setting up collections...');
-    
+    PocketBaseClient.initAdminAuth(pb)
+
+    // Check if we already have collections
+    const hasTemplateExercisesCollection = await collectionExists("template_exercises")
+
+    // If movements collection exists, we assume all other collections exist too
+    if (hasTemplateExercisesCollection) {
+      console.log("Collections already exist, skipping creation.")
+      return
+    }
+
+    console.log("Collections do not exist. Setting up collections...")
+
     // 1. Create movements collection
-    await createMovementsCollection();
-    
-    // 2. Create weight records collection
-    await createWeightRecordsCollection();
-    
-    // 3. Create workouts collection
-    await createWorkoutsCollection();
-    
-    // 4. Create workout_exercises collection
-    await createWorkoutExercisesCollection();
-    
-    // 5. Create workout_sets collection
-    await createWorkoutSetsCollection();
-    
-    // 6. Create templates collection
-    await createTemplatesCollection();
-    
-    // 7. Create template_exercises collection
-    await createTemplateExercisesCollection();
-    
-    console.log('All collections have been successfully created!');
-    
+    const movementCollection = await createMovementsCollection()
+    if (!movementCollection) {
+      throw new Error("Failed to create movements collection")
+    }
+
+    const templatesCollection = await createTemplatesCollection()
+    if (!templatesCollection) {
+      throw new Error("Failed to create templates collection")
+    }
+
+    const workoutsCollection = await createWorkoutsCollection()
+    if (!workoutsCollection) {
+      throw new Error("Failed to create workouts collection")
+    }
+
+    const weightRecordsCollection = await createWeightRecordsCollection(movementCollection.id)
+    if (!weightRecordsCollection) {
+      throw new Error("Failed to create weightrecords collection")
+    }
+
+    const workoutExerciseCollection = await createWorkoutExercisesCollection(
+      workoutsCollection.id,
+      movementCollection.id
+    )
+    if (!workoutExerciseCollection) {
+      throw new Error("Failed to create workout_exercises collection")
+    }
+
+    await createWorkoutSetsCollection(
+      workoutExerciseCollection.id,
+      movementCollection.id
+    )
+
+    await createTemplateExercisesCollection(
+      templatesCollection.id,
+      movementCollection.id
+    )
+
+    console.log("All collections have been successfully created!")
   } catch (error) {
-    console.error('Failed to set up collections:', error);
+    console.error("Failed to set up collections:", error)
   }
 }
 
 // Create movements collection
 async function createMovementsCollection() {
   try {
-    await pb.collections.create({
-      name: 'movements',
-      type: 'base',
-      schema: [
+    return await pb.collections.create({
+      name: "movements",
+      type: "base",
+      fields: [
         {
-          name: 'name',
-          type: 'text',
+          name: "name",
+          type: "text",
           required: true
         },
         {
-          name: 'description',
-          type: 'text',
+          name: "description",
+          type: "text",
           required: false
         },
         {
-          name: 'category',
-          type: 'text',
+          name: "category",
+          type: "text",
           required: false
         },
         {
-          name: 'created',
-          type: 'date',
+          name: "created",
+          type: "date",
           required: true
         }
       ]
-    });
-    console.log('Created movements collection');
+    })
   } catch (error) {
-    console.error('Error creating movements collection:', error);
+    console.error("Error creating movements collection:", error)
   }
 }
 
 // Create weightrecords collection
-async function createWeightRecordsCollection() {
+async function createWeightRecordsCollection(movementCollectionId: string) {
   try {
-    await pb.collections.create({
-      name: 'weightrecords',
-      type: 'base',
-      schema: [
+    return await pb.collections.create({
+      name: "weightrecords",
+      type: "base",
+      fields: [
         {
-          name: 'movementId',
-          type: 'relation',
+          name: "movementId",
+          type: "relation",
           required: true,
-          options: {
-            collectionId: 'movements',
-            cascadeDelete: true
-          }
+          collectionId: movementCollectionId,
+          cascadeDelete: true
         },
         {
-          name: 'weight',
-          type: 'number',
+          name: "weight",
+          type: "number",
           required: true
         },
         {
-          name: 'date',
-          type: 'date',
+          name: "date",
+          type: "date",
           required: true
         },
         {
-          name: 'reps',
-          type: 'number',
+          name: "reps",
+          type: "number",
           required: true
         },
         {
-          name: 'sets',
-          type: 'number',
+          name: "sets",
+          type: "number",
           required: true
         },
         {
-          name: 'workoutId',
-          type: 'text',
+          name: "workoutId",
+          type: "text",
           required: false
         }
       ]
-    });
-    console.log('Created weightrecords collection');
+    })
   } catch (error) {
-    console.error('Error creating weightrecords collection:', error);
+    console.error("Error creating weightrecords collection:", error)
   }
 }
 
 // Create workouts collection
 async function createWorkoutsCollection() {
   try {
-    await pb.collections.create({
-      name: 'workouts',
-      type: 'base',
-      schema: [
+    return await pb.collections.create({
+      name: "workouts",
+      type: "base",
+      fields: [
         {
-          name: 'name',
-          type: 'text',
+          name: "name",
+          type: "text",
           required: true
         },
         {
-          name: 'startTime',
-          type: 'date',
+          name: "startTime",
+          type: "date",
           required: true
         },
         {
-          name: 'endTime',
-          type: 'date',
+          name: "endTime",
+          type: "date",
           required: false
         },
         {
-          name: 'completed',
-          type: 'bool',
+          name: "completed",
+          type: "bool",
           required: true
         },
         {
-          name: 'notes',
-          type: 'text',
+          name: "notes",
+          type: "text",
           required: false
         }
       ]
-    });
-    console.log('Created workouts collection');
+    })
   } catch (error) {
-    console.error('Error creating workouts collection:', error);
+    console.error("Error creating workouts collection:", error)
   }
 }
 
 // Create workout_exercises collection
-async function createWorkoutExercisesCollection() {
+async function createWorkoutExercisesCollection(
+  workoutCollectionId: string,
+  movementCollectionId: string
+) {
   try {
-    await pb.collections.create({
-      name: 'workout_exercises',
-      type: 'base',
-      schema: [
+    return await pb.collections.create({
+      name: "workout_exercises",
+      type: "base",
+      fields: [
         {
-          name: 'workoutId',
-          type: 'relation',
+          name: "workoutId",
+          type: "relation",
           required: true,
-          options: {
-            collectionId: 'workouts',
-            cascadeDelete: true
-          }
+          collectionId: workoutCollectionId,
+          cascadeDelete: true
         },
         {
-          name: 'movementId',
-          type: 'relation',
+          name: "movementId",
+          type: "relation",
           required: true,
-          options: {
-            collectionId: 'movements',
-            cascadeDelete: false
-          }
+          collectionId: movementCollectionId,
+          cascadeDelete: true
         },
         {
-          name: 'notes',
-          type: 'text',
+          name: "notes",
+          type: "text",
           required: false
         }
       ]
-    });
-    console.log('Created workout_exercises collection');
+    })
   } catch (error) {
-    console.error('Error creating workout_exercises collection:', error);
+    console.error("Error creating workout_exercises collection:", error)
   }
 }
 
 // Create workout_sets collection
-async function createWorkoutSetsCollection() {
+async function createWorkoutSetsCollection(
+  workoutExercisesCollectionId: string,
+  movementCollectionId: string
+) {
   try {
     await pb.collections.create({
-      name: 'workout_sets',
-      type: 'base',
-      schema: [
+      name: "workout_sets",
+      type: "base",
+      fields: [
         {
-          name: 'exerciseId',
-          type: 'relation',
+          name: "exerciseId",
+          type: "relation",
           required: true,
-          options: {
-            collectionId: 'workout_exercises',
-            cascadeDelete: true
-          }
+          collectionId: workoutExercisesCollectionId,
+          cascadeDelete: true
         },
         {
-          name: 'movementId',
-          type: 'relation',
+          name: "movementId",
+          type: "relation",
           required: true,
-          options: {
-            collectionId: 'movements',
-            cascadeDelete: false
-          }
+          collectionId: movementCollectionId,
+          cascadeDelete: false
         },
         {
-          name: 'weight',
-          type: 'number',
+          name: "weight",
+          type: "number",
           required: true
         },
         {
-          name: 'reps',
-          type: 'number',
+          name: "reps",
+          type: "number",
           required: true
         },
         {
-          name: 'completed',
-          type: 'bool',
+          name: "completed",
+          type: "bool",
           required: true
         },
         {
-          name: 'restTime',
-          type: 'number',
+          name: "restTime",
+          type: "number",
           required: false
         }
       ]
-    });
-    console.log('Created workout_sets collection');
+    })
+    console.log("Created workout_sets collection")
   } catch (error) {
-    console.error('Error creating workout_sets collection:', error);
+    console.error("Error creating workout_sets collection:", error)
   }
 }
 
 // Create templates collection
 async function createTemplatesCollection() {
   try {
-    await pb.collections.create({
-      name: 'templates',
-      type: 'base',
-      schema: [
+    return await pb.collections.create({
+      name: "templates",
+      type: "base",
+      fields: [
         {
-          name: 'name',
-          type: 'text',
+          name: "name",
+          type: "text",
           required: true
         },
         {
-          name: 'description',
-          type: 'text',
+          name: "description",
+          type: "text",
           required: false
         },
         {
-          name: 'created',
-          type: 'date',
+          name: "created",
+          type: "date",
           required: true
         },
         {
-          name: 'lastUsed',
-          type: 'date',
+          name: "lastUsed",
+          type: "date",
           required: false
         }
       ]
-    });
-    console.log('Created templates collection');
+    })
   } catch (error) {
-    console.error('Error creating templates collection:', error);
+    console.error("Error creating templates collection:", error)
   }
 }
 
 // Create template_exercises collection
-async function createTemplateExercisesCollection() {
+async function createTemplateExercisesCollection(
+  templatesCollectionId: string,
+  movementsCollectionId: string
+) {
   try {
     await pb.collections.create({
-      name: 'template_exercises',
-      type: 'base',
-      schema: [
+      name: "template_exercises",
+      type: "base",
+      fields: [
         {
-          name: 'templateId',
-          type: 'relation',
+          name: "templateId",
+          type: "relation",
           required: true,
-          options: {
-            collectionId: 'templates',
-            cascadeDelete: true
-          }
+          collectionId: templatesCollectionId,
+          cascadeDelete: true
         },
         {
-          name: 'movementId',
-          type: 'relation',
+          name: "movementId",
+          type: "relation",
           required: true,
-          options: {
-            collectionId: 'movements',
-            cascadeDelete: false
-          }
+          collectionId: movementsCollectionId,
+          cascadeDelete: false
         },
         {
-          name: 'sets',
-          type: 'number',
+          name: "sets",
+          type: "number",
           required: true
         },
         {
-          name: 'repsPerSet',
-          type: 'number',
+          name: "repsPerSet",
+          type: "number",
           required: false
         },
         {
-          name: 'restTime',
-          type: 'number',
+          name: "restTime",
+          type: "number",
           required: false
         },
         {
-          name: 'notes',
-          type: 'text',
+          name: "notes",
+          type: "text",
           required: false
         }
       ]
-    });
-    console.log('Created template_exercises collection');
+    })
+    console.log("Created template_exercises collection")
   } catch (error) {
-    console.error('Error creating template_exercises collection:', error);
+    console.error("Error creating template_exercises collection:", error)
   }
 }
 
 // Execute the setup
-if (require.main === module) {
-  setupCollections()
-    .then(() => console.log('Setup complete'))
-    .catch((error) => console.error('Setup failed:', error));
-}
+// if (require.main === module) {
+//   setupCollections()
+//     .then(() => console.log("Setup complete"))
+//     .catch((error) => console.error("Setup failed:", error))
+// }
 
-export { setupCollections };
+export { setupCollections }
+

@@ -1,12 +1,14 @@
 # Feautres to implement
 
-[] Data Persistence: Complete the Pocketbase integration to save data to the backend
+[x] Data Persistence: Complete the Pocketbase integration to save data to the backend
 
 [] User Authentication: Add user accounts and authentication
 
 [] Export/Import: Add functionality to export workout data
 
 [] Settings: Add user preferences for units (kg/lbs), dark/light mode
+
+[x] Settings: dark/light mode
 
 [] Charts for each movement
 
