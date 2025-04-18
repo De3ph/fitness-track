@@ -62,9 +62,9 @@ const NewTemplatePage = observer(() => {
     setExercises(exercises.filter((exercise) => exercise.id !== id))
   }
 
-  const handleSaveTemplate = () => {
+  const handleSaveTemplate = async () => {
     // Create the template
-    const template = templateStore.createTemplate(name, description)
+    const template = await templateStore.createTemplate(name, description)
 
     // Add exercises to the template
     exercises.forEach((exercise) => {

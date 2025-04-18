@@ -1,7 +1,8 @@
 import { Button } from "@/app/components/ui/button"
 import { CardContent } from "@/app/components/ui/card"
 import type { WorkoutTemplate } from "@/app/stores/TemplateStore"
-import { Calendar, Link } from "lucide-react"
+import { Calendar } from "lucide-react"
+import Link from "next/link"
 
 interface WorkoutTemplateProps {
   template: WorkoutTemplate
@@ -12,7 +13,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   template,
   onStartWorkout
 }) => {
-
   const onClickStart = () => {
     onStartWorkout(template.id)
   }
