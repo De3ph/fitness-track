@@ -188,7 +188,7 @@ async function createWorkoutsCollection() {
         {
           name: "completed",
           type: "bool",
-          required: true
+          required: false
         },
         {
           name: "notes",

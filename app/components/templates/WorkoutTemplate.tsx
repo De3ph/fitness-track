@@ -12,6 +12,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   template,
   onStartWorkout
 }) => {
+
+  const onClickStart = () => {
+    onStartWorkout(template.id)
+  }
   return (
     <CardContent className='p-4'>
       <div className='flex justify-between items-start'>
@@ -28,11 +32,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           )}
         </div>
         <div className='flex space-x-2'>
-          <Button
-            size='sm'
-            variant='outline'
-            onClick={() => onStartWorkout(template.id)}
-          >
+          <Button size='sm' variant='outline' onClick={onClickStart}>
             Start
           </Button>
           <Link href={`/templates/${template.id}`}>

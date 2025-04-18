@@ -8,16 +8,21 @@ import { useStore } from "@/app/context/StoreProvider"
 import { Dumbbell, LineChart, ListChecks, Plus, Timer } from "lucide-react"
 import { observer } from "mobx-react-lite"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { formatTimeAgo } from "./utils/dateUtils"
 
 const HomePage = observer(() => {
+  const router = useRouter()
   const { workoutStore, templateStore } = useStore()
   const activeWorkout = workoutStore.activeWorkout
   const recentTemplates = templateStore.getFrequentTemplates(3)
 
-  const handleStartWorkoutFromTemplate = (templateId: string) => {
-    workoutStore.startWorkoutFromTemplate(templateId)
-    templateStore.markTemplateAsUsed(templateId)
+  const handleStartWorkoutFromTemplate = async (templateId: string) => {
+    const workout = await workoutStore.startWorkoutFromTemplate(templateId)
+    if (workout) {
+      await templateStore.markTemplateAsUsed(templateId)
+      router.push(`/workouts/${workout.id}`)
+    }
   }
 
   const handleStopRestTimer = () => {

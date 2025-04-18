@@ -15,18 +15,18 @@ const NewWorkoutPage = observer(() => {
   const [workoutName, setWorkoutName] = useState<string>(`Workout ${new Date().toLocaleDateString()}`);
   const templates = templateStore.getAllTemplates();
 
-  const handleStartEmptyWorkout = () => {
-    const workout = workoutStore.startWorkout(workoutName);
-    router.push(`/workouts/${workout.id}`);
-  };
+  const handleStartEmptyWorkout = async () => {
+    const workout = await workoutStore.startWorkout(workoutName)
+    router.push(`/workouts/${workout.id}`)
+  }
 
-  const handleStartFromTemplate = (templateId: string) => {
-    const workout = workoutStore.startWorkoutFromTemplate(templateId);
+  const handleStartFromTemplate = async (templateId: string) => {
+    const workout = await workoutStore.startWorkoutFromTemplate(templateId)
     if (workout) {
-      templateStore.markTemplateAsUsed(templateId);
-      router.push(`/workouts/${workout.id}`);
+      await templateStore.markTemplateAsUsed(templateId)
+      router.push(`/workouts/${workout.id}`)
     }
-  };
+  }
 
   const handleWorkoutNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setWorkoutName(e.target.value)

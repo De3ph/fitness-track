@@ -16,6 +16,6 @@
 
 # Refactoring
 
-[]use day.js to handle dates
+[x]use day.js to handle dates
 [x] change cursor type on buttons and links
 [] use React Server Components if there isn't any client interactions

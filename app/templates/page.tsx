@@ -8,17 +8,24 @@ import { ListChecks, Plus } from "lucide-react"
 import { observer } from "mobx-react-lite"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import WorkoutTemplate from "../components/templates/WorkoutTemplate"
 
 const TemplatesPage = observer(() => {
   const router = useRouter()
   const { templateStore, workoutStore } = useStore()
+
   const templates = templateStore.getAllTemplates()
 
-  const handleStartWorkout = (templateId: string) => {
-    const workout = workoutStore.startWorkoutFromTemplate(templateId)
+  const [isClient, setIsClient] = useState(false)
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  const handleStartWorkout = async (templateId: string) => {
+    const workout = await workoutStore.startWorkoutFromTemplate(templateId)
     if (workout) {
-      templateStore.markTemplateAsUsed(templateId)
+      await templateStore.markTemplateAsUsed(templateId)
       router.push(`/workouts/${workout.id}`)
     }
   }
@@ -38,7 +45,7 @@ const TemplatesPage = observer(() => {
       }
     >
       <div className='space-y-6'>
-        {templates.length === 0 ? (
+        {isClient && templates.length === 0 ? (
           <Card>
             <CardContent className='p-6 flex flex-col items-center justify-center text-center'>
               <ListChecks className='h-10 w-10 text-gray-400 mb-2' />
@@ -51,21 +58,23 @@ const TemplatesPage = observer(() => {
               </Link>
             </CardContent>
           </Card>
-        ) : (
-          <Card>
-            {templates.map((template) => (
-              <div
-                key={template.id}
-                className='border-b border-gray-200 dark:border-gray-700 last:border-b-0'
-              >
-                <WorkoutTemplate
-                  template={template}
-                  onStartWorkout={handleStartWorkout}
-                />
-              </div>
-            ))}
-          </Card>
-        )}
+        ) : null}
+        {isClient &&
+          (!templates.length ? null : (
+            <Card>
+              {templates.map((template) => (
+                <div
+                  key={template.id}
+                  className='border-b border-gray-200 dark:border-gray-700 last:border-b-0'
+                >
+                  <WorkoutTemplate
+                    template={template}
+                    onStartWorkout={handleStartWorkout}
+                  />
+                </div>
+              ))}
+            </Card>
+          ))}
       </div>
     </AppShell>
   )
