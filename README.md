@@ -1,6 +1,6 @@
 # Fitness Track App
 
-Just wanted to see what I can build with AI
+Just wanted to see what I can build with AI (App still broken btw)
 
 (*Nearly*) All things build with Copilot Agent mode
 
